@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle, XCircle, ArrowRight, Zap, Bug } from 'lucide-react';
+import { CheckCircle, XCircle, ArrowRight, Bug } from 'lucide-react';
 import { useStepper, Frame, StepControls, tabClass, Lesson, CodeLines } from './VisualKit';
 import { Mono, Pill } from './PydanticKit';
 import { validateObject, validateValue, errorBody, VersionToggle, ResultBox, pyValue } from './ConstraintKit';
@@ -751,117 +751,6 @@ export function HouseConstraintsVisualizer() {
           okNote="At this point, 'features' is guaranteed to be valid — your endpoint runs model prediction with it."
           errNote="The response details exactly which fields failed and why. Your endpoint function never ran."
         />
-      </div>
-    </Frame>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* 7. Fail fast + reusable models                                        */
-/* ------------------------------------------------------------------ */
-
-const FF_PAYLOADS = {
-  valid: { label: 'valid', v: { area_sqft: 1500.5, bedrooms: 3, year_built: 1995, zip_code: '90210' }, manual: 'ok' },
-  neg: { label: 'area_sqft: -100', v: { area_sqft: -100, bedrooms: 3, year_built: 1995, zip_code: '90210' }, manual: 'garbage' },
-  bed0: { label: 'bedrooms: 0', v: { area_sqft: 1500.5, bedrooms: 0, year_built: 1995, zip_code: '90210' }, manual: 'garbage' },
-  zip: { label: 'zip_code: "abcde"', v: { area_sqft: 1500.5, bedrooms: 3, year_built: 1995, zip_code: 'abcde' }, manual: 'crash' },
-};
-
-const LANE_STEPS = ['Request arrives', 'Validate', 'Preprocess features', 'model.predict()', 'Respond'];
-
-export function FailFastVisualizer() {
-  const [pick, setPick] = useState('neg');
-  const stepper = useStepper(LANE_STEPS.length, 1000);
-  const step = stepper.index;
-  const p = FF_PAYLOADS[pick];
-  const res = validateObject(HOUSE_FIELDS, p.v);
-  const stopAt = res.errors.length ? 1 : LANE_STEPS.length;
-  const crashAt = p.manual === 'crash' ? 2 : null;
-
-  const laneA = LANE_STEPS.map((s, i) => {
-    if (i === 1) return { s: 'no declarative check', state: 'skip' };
-    if (crashAt !== null && i > crashAt) return { s, state: 'dead' };
-    if (crashAt === i) return { s: 'int("abcde") → ValueError', state: 'crash' };
-    if (i === 4) return { s: p.manual === 'garbage' ? '200 · nonsense price' : p.manual === 'crash' ? '500' : '200 · price', state: p.manual === 'garbage' ? 'warn' : p.manual === 'crash' ? 'crash' : 'ok' };
-    return { s, state: 'ok' };
-  });
-  const laneB = LANE_STEPS.map((s, i) => {
-    if (i === 1) return { s: res.errors.length ? `HouseFeatures → 422 (${res.errors[0].loc[1]})` : 'HouseFeatures ✓', state: res.errors.length ? 'stop' : 'ok' };
-    if (i > stopAt) return { s, state: 'dead' };
-    if (i === 4) return { s: '200 · price', state: 'ok' };
-    return { s, state: 'ok' };
-  });
-
-  const tone = {
-    ok: 'border-emerald-400/50 bg-emerald-500/10 text-emerald-100',
-    skip: 'border-gray-700 border-dashed text-gray-500',
-    crash: 'border-rose-400 bg-rose-500/20 text-rose-100',
-    warn: 'border-amber-400 bg-amber-500/20 text-amber-100',
-    stop: 'border-sky-400 bg-sky-500/20 text-sky-100',
-    dead: 'border-gray-800 text-gray-700',
-  };
-
-  const Lane = ({ title, cells, icon }) => (
-    <div className="space-y-1">
-      <p className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-gray-400">{icon} {title}</p>
-      <div className="grid grid-cols-5 gap-1">
-        {cells.map((c, i) => (
-          <motion.div
-            key={i}
-            animate={{ opacity: i <= step ? 1 : 0.15, scale: i === step ? 1.04 : 1 }}
-            className={`rounded-lg border px-1 py-2 text-center text-[9px] leading-tight min-h-[3rem] flex items-center justify-center ${tone[c.state]}`}
-          >
-            {c.s}
-          </motion.div>
-        ))}
-      </div>
-    </div>
-  );
-
-  return (
-    <Frame
-      title="Fail fast: catch bad data at the earliest possible stage"
-      hint="Pick a payload and step through time. The top lane checks nothing up front; the bottom lane validates with HouseFeatures."
-      footer={<StepControls stepper={stepper} total={LANE_STEPS.length} />}
-    >
-      <div className="space-y-3">
-        <div className="flex flex-wrap gap-1.5">
-          {Object.entries(FF_PAYLOADS).map(([id, x]) => (
-            <button key={id} type="button" className={`${tabClass(pick === id)} font-mono`} onClick={() => setPick(id)}>
-              {x.label}
-            </button>
-          ))}
-        </div>
-        <div className="flex justify-between text-[9px] uppercase tracking-wider text-gray-600 px-1">
-          <span>time →</span>
-        </div>
-        <Lane title="No validation up front" cells={laneA} icon={<Bug className="w-3 h-3" />} />
-        <Lane title="Declarative HouseFeatures model" cells={laneB} icon={<Zap className="w-3 h-3" />} />
-
-        {step === LANE_STEPS.length - 1 && (
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[11px] text-gray-300">
-            {p.manual === 'ok'
-              ? 'Valid data: both lanes reach the model. Validation costs almost nothing when the data is good.'
-              : p.manual === 'crash'
-                ? 'Without validation the request crashes mid-preprocessing (500). With the model it is stopped at step 2 with a clear 422.'
-                : 'Worst case: without validation the model happily returns a meaningless price with status 200. Nobody notices.'}
-          </motion.p>
-        )}
-
-        <div className="rounded-xl border border-gray-700 p-3">
-          <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-2">declarative and reusable</p>
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg border border-teal-400/60 bg-teal-500/10 px-3 py-2 font-mono text-[11px] text-teal-100">HouseFeatures</div>
-            <div className="flex-1 space-y-1">
-              {['POST /predict_price/', 'POST /predict_price/batch', 'POST /explain_price/'].map((ep, i) => (
-                <motion.div key={ep} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }} className="flex items-center gap-2 font-mono text-[10px] text-gray-300">
-                  <ArrowRight className="w-3 h-3 text-teal-400" /> {ep}
-                </motion.div>
-              ))}
-            </div>
-          </div>
-          <p className="text-[10px] text-gray-500 mt-2">One model, defined once, validates every endpoint that uses it. No if-statements in the endpoint bodies.</p>
-        </div>
       </div>
     </Frame>
   );

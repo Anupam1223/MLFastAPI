@@ -7,7 +7,6 @@ import {
   StringConstraintsVisualizer,
   CollectionConstraintsVisualizer,
   HouseConstraintsVisualizer,
-  FailFastVisualizer,
 } from '../components/PydanticPart3ConstraintVisualizers';
 import {
   FlatVsNestedVisualizer,
@@ -289,33 +288,6 @@ class HouseFeatures(BaseModel):
           In Pydantic v2, <C>example=</C> still works but is deprecated; the current form is <C>examples=[1500.50]</C>.
         </p>
         <Hint>Load “all three” on the right: every violation comes back in a single response.</Hint>
-      </div>
-    ),
-  },
-  {
-    id: 'fail-fast',
-    title: 'Declarative, Reusable, Fail Fast',
-    subtitle: 'Why Field constraints belong in the model',
-    Visual: FailFastVisualizer,
-    content: (
-      <div className="space-y-3 text-sm text-gray-300 leading-relaxed">
-        <p>
-          By leveraging Pydantic’s <C>Field</C> function for data conversion and constraints, you move validation logic{' '}
-          <strong className="text-white">out of your endpoint functions</strong> and into{' '}
-          <strong className="text-white">declarative, reusable models</strong>.
-        </p>
-        <Box title="This leads to" tone="teal">
-          <ul className="list-disc pl-5 space-y-0.5">
-            <li>cleaner API code,</li>
-            <li>improved robustness against invalid data,</li>
-            <li>and better adherence to the principle of <strong className="text-white">“fail fast”</strong> by catching errors at the earliest possible stage.</li>
-          </ul>
-        </Box>
-        <p>
-          This ensures that the data reaching your ML model inference code is already vetted for correctness according to the rules
-          you’ve defined.
-        </p>
-        <Hint>Race the two lanes on the right with each payload.</Hint>
       </div>
     ),
   },

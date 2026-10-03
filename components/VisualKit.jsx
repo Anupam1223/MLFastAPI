@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Pause, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CodeText } from './CodeBlock';
 
 export function useStepper(length, ms = 1300) {
   const [index, setIndex] = useState(0);
@@ -186,7 +187,6 @@ export function CodeLines({ lines, active = [], title, onLineClick, marks = {} }
       <div className="py-2 font-mono text-[11px] leading-relaxed overflow-x-auto">
         {lines.map((line, i) => {
           const on = active.includes(i);
-          const comment = line.trim().startsWith('#');
           return (
             <div
               key={i}
@@ -196,8 +196,8 @@ export function CodeLines({ lines, active = [], title, onLineClick, marks = {} }
               }`}
             >
               <span className="w-5 shrink-0 text-right text-gray-600 select-none">{i + 1}</span>
-              <span className={`whitespace-pre ${on ? 'text-teal-50' : comment ? 'text-gray-500' : 'text-gray-300'}`}>
-                {line || ' '}
+              <span className="whitespace-pre">
+                <CodeText text={line || ' '} codeClass={on ? 'text-teal-50' : 'text-gray-200'} commentClass="text-amber-200" />
               </span>
               {marks[i] && (
                 <span className="ml-auto shrink-0 self-center text-[9px] font-sans font-bold px-1.5 rounded-full bg-teal-500/20 text-teal-200">

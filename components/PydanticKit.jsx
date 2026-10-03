@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Frame, tabClass, Lesson, CodeLines } from './VisualKit';
+import { CodeText } from './CodeBlock';
 
 /* ------------------------------------------------------------------ */
 /* Schemas used across the Pydantic slides                               */
@@ -250,7 +251,7 @@ export const STATUS_BADGE = {
 
 export const Mono = ({ children, className = '' }) => (
   <pre className={`font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-all rounded-lg bg-black/60 border border-gray-800 p-2.5 text-gray-200 ${className}`}>
-    {children}
+    {typeof children === 'string' ? <CodeText text={children} codeClass="" commentClass="text-amber-200" /> : children}
   </pre>
 );
 

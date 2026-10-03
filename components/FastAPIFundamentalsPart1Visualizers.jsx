@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useStepper, Frame, StepControls, tabClass, Lesson } from './VisualKit';
+import { CodeText } from './CodeBlock';
 import {
   ChevronLeft,
   ChevronRight,
@@ -2822,8 +2823,8 @@ function ServingTimeline({ mode, setMode, background, setBackground, stepper }) 
 
       <div>
         <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">The code for this setup</p>
-        <pre className="font-mono text-[10px] leading-relaxed text-teal-50 bg-gray-950 border border-gray-700 rounded-xl p-3 overflow-x-auto">
-          {serveCode(mode, background)}
+        <pre className="font-mono text-[10px] leading-relaxed bg-gray-950 border border-gray-700 rounded-xl p-3 overflow-x-auto">
+          <CodeText text={serveCode(mode, background)} />
         </pre>
       </div>
     </div>

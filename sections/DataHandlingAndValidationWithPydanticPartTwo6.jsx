@@ -1,4 +1,5 @@
 import React from 'react';
+import CodeBlock from '../components/CodeBlock';
 import ChapterDeck from '../components/ChapterDeck';
 import {
   ResponseContractVisualizer,
@@ -27,11 +28,7 @@ export const meta = {
 
 const C = ({ children }) => <span className="font-mono text-xs text-teal-200">{children}</span>;
 
-const Pre = ({ children }) => (
-  <pre className="font-mono text-[11px] leading-relaxed bg-gray-950/80 border border-gray-700 rounded-lg p-3 text-teal-100 overflow-x-auto">
-    {children}
-  </pre>
-);
+const Pre = CodeBlock;
 
 const Box = ({ title, tone = 'teal', children }) => {
   const border = {

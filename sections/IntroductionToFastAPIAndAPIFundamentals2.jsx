@@ -1,4 +1,5 @@
 import React from 'react';
+import CodeBlock from '../components/CodeBlock';
 import ChapterDeck from '../components/ChapterDeck';
 import {
   StackFlowVisualizer,
@@ -524,11 +525,11 @@ const slidesData = [
           keeps garbage out of inference.
         </p>
         <p>You declare the contract as a normal Python class:</p>
-        <pre className="font-mono text-[11px] leading-relaxed bg-gray-950/80 border border-gray-700 rounded-lg p-3 text-teal-100 overflow-x-auto">{`from pydantic import BaseModel
+        <CodeBlock>{`from pydantic import BaseModel
 
 class ModelInput(BaseModel):
     age: int
-    signup_month: str`}</pre>
+    signup_month: str`}</CodeBlock>
         <p>FastAPI then does three things with it:</p>
         <ol className="list-decimal pl-5 space-y-1.5">
           <li>Parse the JSON body.</li>
@@ -640,8 +641,8 @@ class ModelInput(BaseModel):
             FastAPI can return the response to the client quickly, then run non-critical follow-up
             work in the background, such as sending an email or updating a monitoring dashboard.
           </p>
-          <pre className="font-mono text-[11px] leading-relaxed bg-gray-950/80 border border-gray-700 rounded-lg p-2 text-teal-100 overflow-x-auto">{`background_tasks.add_task(update_dashboard, label)
-return {"label": label}   # client gets this now`}</pre>
+          <CodeBlock className="p-2">{`background_tasks.add_task(update_dashboard, label)
+return {"label": label}   # client gets this now`}</CodeBlock>
         </div>
 
         <p className="text-xs text-gray-400">

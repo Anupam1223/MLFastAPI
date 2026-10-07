@@ -304,7 +304,7 @@ curl -X POST "http://localhost:8000/predict" \\
         </p>
         <p>To use this setup, first ensure Gunicorn is installed in your environment (or added to your <C>requirements.txt</C>):</p>
         <Pre>{`pip install gunicorn`}</Pre>
-        <Hint>Steps 1 and 2 are a single Uvicorn process, then a crash. From step 3 the master hands work to workers, and step 5 replaces the one that exited.</Hint>
+        <Hint>Press Next. Steps 1 and 2 are one Uvicorn process, then a crash. Step 4 shows the master handing POST /predict to one worker. Step 5 replaces the worker that exited.</Hint>
       </div>
     ),
   },

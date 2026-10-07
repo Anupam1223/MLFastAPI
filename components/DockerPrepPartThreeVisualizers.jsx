@@ -1,10 +1,8 @@
 import { useState } from 'react';
 import {
   AlertTriangle,
-  Cpu,
   FolderGit2,
   Gauge,
-  Network,
   Send,
   Server,
   Shield,
@@ -332,124 +330,94 @@ export function VerifyApiVisualizer() {
   );
 }
 
-function DevVsProd() {
-  const [mode, setMode] = useState('prod');
-  const [crashed, setCrashed] = useState(null);
-  const [burst, setBurst] = useState(false);
-  const dead = crashed === 'dev';
+const GUNICORN_STORY = [
+  {
+    title: 'Development: one Uvicorn process',
+    command: 'uvicorn main:app --reload',
+    caption: 'This command is one process. It runs the FastAPI app on a single core. The other cores stay idle, and nothing is watching the process.',
+    scene: 'dev',
+  },
+  {
+    title: 'That one process exits',
+    command: 'the process is gone',
+    caption: 'A crash takes the only process with it. The API stays down until someone starts Uvicorn again by hand.',
+    scene: 'dead',
+  },
+  {
+    title: 'Gunicorn starts four workers',
+    command: 'gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app',
+    caption: 'The master does not run your app. It starts four Uvicorn workers. Each worker loads its own copy of the FastAPI app.',
+    scene: 'pool',
+  },
+  {
+    title: 'One request, one worker',
+    command: 'POST /predict arrives on port 8000',
+    caption: 'The master is the only process listening on port 8000. It forwards this request to worker 2. Worker 2 runs FastAPI and sends the response back.',
+    scene: 'forward',
+  },
+  {
+    title: 'Worker 2 exits, the API stays up',
+    command: 'master replaces worker 2',
+    caption: 'The master notices worker 2 is gone and starts a new one. Workers 1 and 3 keep answering requests while that happens.',
+    scene: 'heal',
+  },
+];
 
+function WorkerCard({ name, detail, hot, down, idle }) {
   return (
-    <>
-      <Bar>
-        <div className="flex flex-wrap gap-2">
-          <Chip active={mode === 'dev'} tone="amber" onClick={() => { setMode('dev'); setCrashed(null); }}>uvicorn --reload</Chip>
-          <Chip active={mode === 'prod'} onClick={() => { setMode('prod'); setCrashed(null); }}>Gunicorn + 4 workers</Chip>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Chip active={burst} onClick={() => setBurst((v) => !v)}>{burst ? 'Traffic on' : 'Send traffic'}</Chip>
-          <Chip tone="rose" active={crashed !== null} onClick={() => setCrashed(mode === 'dev' ? 'dev' : 2)}>Crash a process</Chip>
-        </div>
-      </Bar>
-      <div className="flex min-h-0 flex-1 flex-col gap-3 rounded-2xl border border-gray-800 p-3">
-        <div className="flex items-center justify-between gap-2">
-          <p className="font-mono text-[11px] text-gray-400">{mode === 'dev' ? 'uvicorn main:app --reload' : 'gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app'}</p>
-          <span className={`rounded-lg px-2 py-1 font-mono text-[11px] font-bold ${dead ? 'bg-rose-500 text-white' : crashed === 2 ? 'bg-amber-500/20 text-amber-100' : 'bg-emerald-500/20 text-emerald-100'}`}>
-            {dead ? 'API down' : crashed === 2 ? 'Worker 2 exited' : '200'}
-          </span>
-        </div>
-        {mode === 'prod' ? (
-          <div className="flex items-center justify-between gap-2 rounded-xl border border-teal-400/40 px-3 py-2">
-            <span className="flex items-center gap-2 text-xs font-bold text-white"><Shield className="h-3.5 w-3.5 text-teal-300" /> Gunicorn master</span>
-            {crashed === 2 ? (
-              <button type="button" onClick={() => setCrashed(null)} className="rounded-lg bg-teal-500 px-2 py-1 text-[11px] font-bold text-gray-950">Respawn worker 2</button>
-            ) : (
-              <span className="font-mono text-[11px] text-teal-200">watching 4 workers</span>
-            )}
-          </div>
-        ) : (
-          <div className="flex items-center justify-between gap-2 rounded-xl border border-amber-400/30 px-3 py-2">
-            <span className="flex items-center gap-2 text-xs font-bold text-amber-100"><AlertTriangle className="h-3.5 w-3.5" /> No process manager</span>
-            {dead && <button type="button" onClick={() => setCrashed(null)} className="rounded-lg bg-amber-400 px-2 py-1 text-[11px] font-bold text-gray-950">Restart server</button>}
-          </div>
-        )}
-        <div className="grid flex-1 grid-cols-2 gap-2 md:grid-cols-4">
-          {[1, 2, 3, 4].map((core) => {
-            const idle = mode === 'dev' && core > 1;
-            const down = (mode === 'dev' && core === 1 && dead) || (mode === 'prod' && core === crashed);
-            return (
-              <div key={core} className={`flex min-h-[108px] flex-col justify-between rounded-2xl border p-3 ${down ? 'border-rose-400 bg-rose-950/40' : idle ? 'border-gray-800 opacity-40' : 'border-emerald-400/40'}`}>
-                <span className="flex items-center justify-between font-mono text-[10px] text-gray-400">Core {core}<Cpu className={`h-3.5 w-3.5 ${down ? 'text-rose-300' : 'text-emerald-300'}`} /></span>
-                <p className="text-center text-[11px] font-bold text-white">{idle ? 'idle' : down ? 'exited' : mode === 'dev' ? 'one Uvicorn' : `worker ${core}`}</p>
-                <div className="h-1.5 overflow-hidden rounded-full bg-gray-950">
-                  <div className={`h-full bg-teal-400 ${down || idle ? 'w-0' : burst ? 'w-full' : 'w-1/3'}`} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </>
-  );
-}
-
-const PHASES = ['idle', 'toMaster', 'toWorker', 'response'];
-const PHASE_LABEL = ['Send request', 'Forward to worker', 'Return response', 'Clear'];
-
-function RequestPath() {
-  const [worker, setWorker] = useState(0);
-  const [phase, setPhase] = useState(0);
-  const [reloading, setReloading] = useState(false);
-  const name = PHASES[phase];
-  const workers = [
-    { name: 'Worker 1', pid: 1041 },
-    { name: 'Worker 2', pid: 1042 },
-    { name: 'Worker N', pid: 1043 },
-  ];
-
-  return (
-    <>
-      <Bar>
-        <span className="flex items-center gap-1.5 text-xs font-bold text-teal-200"><Network className="h-3.5 w-3.5" /> Request path</span>
-        <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => setPhase((n) => (n + 1) % 4)} className="flex items-center gap-1.5 rounded-xl bg-teal-500 px-3 py-1.5 text-xs font-bold text-gray-950">
-            <Send className="h-3.5 w-3.5" /> {PHASE_LABEL[phase]}
-          </button>
-          <Chip active={reloading} onClick={() => setReloading((v) => !v)}>{reloading ? 'New workers up' : 'Zero-downtime reload'}</Chip>
-        </div>
-      </Bar>
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-between rounded-2xl border border-gray-800 p-3">
-        <div className={`rounded-full border px-4 py-2 text-center ${name === 'toMaster' || name === 'response' ? 'border-teal-300 bg-teal-500/15' : 'border-gray-700'}`}>
-          <p className="text-xs font-bold text-white">Client</p>
-          <p className="font-mono text-[10px] text-teal-200">{name === 'response' ? '200 JSON' : 'POST /predict'}</p>
-        </div>
-        <p className="font-mono text-[10px] text-gray-400">{name === 'toMaster' ? 'request ↓' : name === 'response' ? 'response ↑' : ' '}</p>
-        <div className={`w-full max-w-sm rounded-2xl border px-3 py-2 text-center ${name !== 'idle' ? 'border-teal-300' : 'border-teal-400/30'}`}>
-          <p className="text-xs font-bold text-teal-200">Gunicorn master</p>
-          <p className="font-mono text-[10px] text-gray-300">listens on 8000</p>
-        </div>
-        <div className="grid w-full grid-cols-3 gap-2">
-          {workers.map((item, id) => (
-            <button key={item.pid} type="button" onClick={() => setWorker(id)} className={`rounded-2xl border p-2 text-center ${reloading ? 'border-emerald-300' : worker === id && name === 'toWorker' ? 'border-teal-200 bg-teal-400 text-gray-950' : worker === id ? 'border-teal-400/60' : 'border-gray-800'}`}>
-              <p className="font-mono text-[10px]">PID {reloading ? item.pid + 100 : item.pid}</p>
-              <p className="text-xs font-bold">{item.name}</p>
-              <p className="text-[10px]">FastAPI</p>
-            </button>
-          ))}
-        </div>
-      </div>
-    </>
+    <div className={`rounded-xl border px-2 py-2 text-center ${down ? 'border-rose-400 bg-rose-950/40' : hot ? 'border-teal-200 bg-teal-400 text-gray-950' : idle ? 'border-gray-800 opacity-40' : 'border-gray-700'}`}>
+      <p className="text-[11px] font-bold">{name}</p>
+      <p className="font-mono text-[10px]">{detail}</p>
+    </div>
   );
 }
 
 export function GunicornWorkersVisualizer() {
-  const [view, setView] = useState('crash');
+  const [step, setStep] = useState(0);
+  const pick = (n) => setStep(Math.min(GUNICORN_STORY.length - 1, Math.max(0, n)));
+  const scene = GUNICORN_STORY[step].scene;
+  const showMaster = scene === 'pool' || scene === 'forward' || scene === 'heal';
+
   return (
     <Frame>
-      <div className="flex gap-2">
-        <Chip active={view === 'crash'} onClick={() => setView('crash')}>One process vs four workers</Chip>
-        <Chip active={view === 'path'} onClick={() => setView('path')}>Master forwards a request</Chip>
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" onClick={() => pick(step - 1)} disabled={step === 0} className="rounded-lg bg-gray-800 px-3 py-1.5 text-xs font-semibold disabled:opacity-30">Prev</button>
+        <button type="button" onClick={() => pick(step + 1)} disabled={step === GUNICORN_STORY.length - 1} className="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-30">Next</button>
+        {GUNICORN_STORY.map((item, index) => (
+          <button key={item.title} type="button" onClick={() => pick(index)} className={`h-7 w-7 rounded-lg font-mono text-xs font-bold ${step === index ? 'bg-teal-400 text-gray-950' : 'bg-gray-800 text-gray-400'}`}>{index + 1}</button>
+        ))}
       </div>
-      {view === 'crash' ? <DevVsProd /> : <RequestPath />}
+      <div className="rounded-2xl border border-gray-800 p-3">
+        <p className="text-sm font-bold text-white">{GUNICORN_STORY[step].title}</p>
+        <p className="mt-1 font-mono text-[11px] text-teal-200">{GUNICORN_STORY[step].command}</p>
+        <p className="mt-2 text-xs leading-relaxed text-gray-300">{GUNICORN_STORY[step].caption}</p>
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col justify-center gap-2 rounded-2xl border border-gray-800 p-3">
+        {scene === 'forward' && (
+          <p className="rounded-xl border border-teal-300 bg-teal-500/15 px-3 py-2 text-center text-xs font-bold text-white">Client sends POST /predict</p>
+        )}
+        {showMaster ? (
+          <div className="rounded-xl border border-teal-400/40 px-3 py-2 text-center">
+            <p className="flex items-center justify-center gap-1.5 text-xs font-bold text-teal-100"><Shield className="h-3.5 w-3.5" /> Gunicorn master</p>
+            <p className="font-mono text-[10px] text-gray-400">
+              {scene === 'forward' ? 'listening on 8000, forwarding to worker 2' : scene === 'heal' ? 'saw worker 2 exit, started a replacement' : 'watching the workers, not running FastAPI'}
+            </p>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center gap-1.5 rounded-xl border border-amber-400/40 px-3 py-2 text-xs font-bold text-amber-100">
+            <AlertTriangle className="h-3.5 w-3.5" /> No process manager
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+          <WorkerCard name={showMaster ? 'Worker 1' : 'Uvicorn'} detail={scene === 'dead' ? 'exited' : 'FastAPI app'} down={scene === 'dead'} idle={false} hot={false} />
+          <WorkerCard name={showMaster ? 'Worker 2' : 'Core 2'} detail={scene === 'heal' ? 'new process' : scene === 'forward' ? 'handling /predict' : showMaster ? 'FastAPI app' : 'idle'} hot={scene === 'forward'} down={false} idle={!showMaster} />
+          <WorkerCard name={showMaster ? 'Worker 3' : 'Core 3'} detail={showMaster ? 'FastAPI app' : 'idle'} idle={!showMaster} hot={false} down={false} />
+          <WorkerCard name={showMaster ? 'Worker 4' : 'Core 4'} detail={showMaster ? 'FastAPI app' : 'idle'} idle={!showMaster} hot={false} down={false} />
+        </div>
+        <p className={`text-center font-mono text-[11px] font-bold ${scene === 'dead' ? 'text-rose-200' : 'text-emerald-200'}`}>
+          {scene === 'dead' ? 'API down' : scene === 'heal' ? 'API still up' : scene === 'forward' ? '200 from worker 2' : 'API up'}
+        </p>
+      </div>
     </Frame>
   );
 }

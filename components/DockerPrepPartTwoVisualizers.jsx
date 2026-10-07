@@ -11,7 +11,12 @@ import {
   RefreshCw,
   CheckCircle2,
   XCircle,
-  Globe,
+  Laptop,
+  Unlock,
+  ArrowRight,
+  Play,
+  DoorOpen,
+  DoorClosed,
   Lock,
   Key,
   Sliders,
@@ -188,46 +193,183 @@ export function BuildStepsVisualizer() {
   );
 }
 
+function PortPipe() {
+  const [published, setPublished] = useState(true);
+  const [result, setResult] = useState('idle');
+  const send = () => setResult(published ? 'arrived' : 'blocked');
+  return (
+    <>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => { setPublished(false); setResult('idle'); }} className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold ${!published ? 'bg-rose-500 text-white' : 'bg-slate-800 text-slate-400'}`}><Lock className="h-3.5 w-3.5" /> No -p</button>
+          <button type="button" onClick={() => { setPublished(true); setResult('idle'); }} className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold ${published ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-400'}`}><Unlock className="h-3.5 w-3.5" /> -p 8000:80</button>
+        </div>
+        <button type="button" onClick={send} className="flex items-center gap-1.5 rounded-xl bg-teal-500 px-3 py-1.5 text-xs font-bold text-slate-950"><Play className="h-3.5 w-3.5" /> Send localhost:8000</button>
+      </div>
+      <div className="grid min-h-0 flex-1 items-stretch gap-2 md:grid-cols-3">
+        <div className="flex flex-col justify-between rounded-2xl border border-amber-400/40 p-3">
+          <p className="flex items-center gap-1.5 text-xs font-bold text-amber-200"><Laptop className="h-4 w-4" /> Laptop</p>
+          <p className="font-mono text-xs font-bold text-amber-200">localhost:8000</p>
+          <p className="font-mono text-[11px] text-slate-400">door 8000</p>
+        </div>
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-800 p-3 text-center">
+          {published ? (
+            <>
+              <p className="font-mono text-[11px] font-bold text-emerald-300">8000 → 80</p>
+              <ArrowRight className="my-2 h-4 w-4 text-emerald-300" />
+              <p className="text-[11px] text-emerald-200">pipe is open</p>
+            </>
+          ) : (
+            <>
+              <XCircle className="h-5 w-5 text-rose-300" />
+              <p className="mt-2 text-[11px] text-rose-200">no pipe</p>
+            </>
+          )}
+        </div>
+        <div className={`flex flex-col justify-between rounded-2xl border p-3 ${result === 'arrived' ? 'border-emerald-400' : 'border-cyan-400/40'}`}>
+          <p className="flex items-center gap-1.5 text-xs font-bold text-cyan-200"><Box className="h-4 w-4" /> Container</p>
+          <p className="font-mono text-[11px] text-cyan-100">uvicorn --port 80</p>
+          <p className="font-mono text-[11px] text-slate-400">door 80</p>
+        </div>
+      </div>
+      <p className={`rounded-xl border px-3 py-2 text-[11px] ${result === 'arrived' ? 'border-emerald-400/40 text-emerald-200' : result === 'blocked' ? 'border-rose-400/40 text-rose-200' : 'border-slate-800 text-slate-400'}`}>
+        {result === 'arrived' && 'The request used laptop port 8000, crossed the pipe, and reached FastAPI on port 80.'}
+        {result === 'blocked' && 'FastAPI is on port 80 inside the container. The laptop has no pipe to it.'}
+        {result === 'idle' && 'Send a request. Without -p the container stays sealed.'}
+      </p>
+    </>
+  );
+}
+
+function PortNumbers() {
+  const [hostPort, setHostPort] = useState(8000);
+  const [mapped, setMapped] = useState(80);
+  const [uvicornPort, setUvicornPort] = useState(80);
+  const matched = mapped === uvicornPort;
+  const pick = (current, value, set) => (
+    <button type="button" onClick={() => set(value)} className={`rounded-lg px-2 py-1 font-mono text-[11px] font-bold ${current === value ? 'bg-teal-400 text-slate-950' : 'bg-slate-800 text-slate-300'}`}>{value}</button>
+  );
+  return (
+    <>
+      <div className="grid gap-2 md:grid-cols-3">
+        <div className="rounded-xl border border-amber-400/30 p-2">
+          <p className="mb-1 text-[10px] font-bold uppercase text-amber-200">Left · host</p>
+          <div className="flex gap-1">{[8000, 3000, 9090].map((port) => <span key={port}>{pick(hostPort, port, setHostPort)}</span>)}</div>
+        </div>
+        <div className="rounded-xl border border-cyan-400/30 p-2">
+          <p className="mb-1 text-[10px] font-bold uppercase text-cyan-200">Right · container</p>
+          <div className="flex gap-1">{[80, 8000, 5000].map((port) => <span key={port}>{pick(mapped, port, setMapped)}</span>)}</div>
+        </div>
+        <div className="rounded-xl border border-emerald-400/30 p-2">
+          <p className="mb-1 text-[10px] font-bold uppercase text-emerald-200">uvicorn --port</p>
+          <div className="flex gap-1">{[80, 8000].map((port) => <span key={port}>{pick(uvicornPort, port, setUvicornPort)}</span>)}</div>
+        </div>
+      </div>
+      <p className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 font-mono text-[11px] text-slate-300">
+        docker run -p <span className="text-amber-200">{hostPort}</span>:<span className={matched ? 'text-cyan-200' : 'text-rose-300'}>{mapped}</span> my-ml-api
+        <span className="ml-2 text-amber-200">localhost:{hostPort}</span>
+      </p>
+      <div className="grid min-h-0 flex-1 gap-2 md:grid-cols-3">
+        <div className="rounded-2xl border border-amber-400/30 p-3 text-center">
+          <p className="text-[10px] uppercase text-amber-200">Browser</p>
+          <p className="mt-2 font-mono text-sm font-bold text-white">localhost:{hostPort}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-800 p-3 text-center">
+          <p className="text-[10px] uppercase text-slate-400">-p pipe</p>
+          <p className="mt-2 font-mono text-sm font-bold"><span className="text-amber-200">{hostPort}</span> → <span className={matched ? 'text-cyan-200' : 'text-rose-300'}>{mapped}</span></p>
+        </div>
+        <div className={`rounded-2xl border p-3 text-center ${matched ? 'border-emerald-400' : 'border-rose-400'}`}>
+          <p className="text-[10px] uppercase text-emerald-200">Inside</p>
+          <p className="mt-2 font-mono text-sm font-bold text-white">--port {uvicornPort}</p>
+          <p className={`mt-1 text-[11px] ${matched ? 'text-emerald-200' : 'text-rose-200'}`}>{matched ? 'The right number matches.' : `The pipe ends on ${mapped}. The app is on ${uvicornPort}.`}</p>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function BindHost() {
+  const [open, setOpen] = useState(true);
+  const host = open ? '0.0.0.0' : '127.0.0.1';
+  return (
+    <>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={() => setOpen(false)} className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 font-mono text-xs font-bold ${!open ? 'bg-rose-500 text-white' : 'bg-slate-800 text-slate-400'}`}><DoorClosed className="h-3.5 w-3.5" /> --host 127.0.0.1</button>
+        <button type="button" onClick={() => setOpen(true)} className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 font-mono text-xs font-bold ${open ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-400'}`}><DoorOpen className="h-3.5 w-3.5" /> --host 0.0.0.0</button>
+      </div>
+      <p className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 font-mono text-[11px] text-slate-300">
+        uvicorn main:app --host <span className={open ? 'text-emerald-300' : 'text-rose-300'}>{host}</span> --port 80
+      </p>
+      <div className="grid min-h-0 flex-1 items-center gap-2 md:grid-cols-3">
+        <div className="rounded-2xl border border-slate-800 p-3">
+          <p className="flex items-center gap-1.5 text-xs font-bold text-amber-200"><Laptop className="h-4 w-4" /> Laptop pipe</p>
+          <p className="mt-2 font-mono text-[11px] text-emerald-200">localhost:8000 → port 80</p>
+        </div>
+        <div className={`flex flex-col items-center rounded-2xl border p-3 ${open ? 'border-emerald-400 text-emerald-200' : 'border-rose-400 text-rose-200'}`}>
+          {open ? <DoorOpen className="h-7 w-7" /> : <DoorClosed className="h-7 w-7" />}
+          <p className="mt-2 text-[11px] font-bold">{open ? 'Door open' : 'Locked'}</p>
+        </div>
+        <div className={`rounded-2xl border p-3 text-xs ${open ? 'border-emerald-400/40 text-emerald-100' : 'border-rose-400/40 text-rose-100'}`}>
+          {open ? '0.0.0.0 accepts the request that Docker forwarded from the laptop.' : '127.0.0.1 only accepts programs inside this container. The laptop is outside.'}
+        </div>
+      </div>
+    </>
+  );
+}
+
+const PORT_LINES = [
+  { label: '-p connects the two ports', highlight: 'pipe' },
+  { label: 'container_port is uvicorn --port 80', highlight: 'container' },
+  { label: '0.0.0.0 opens the container', highlight: 'zero' },
+  { label: 'host_port is localhost:8000', highlight: 'host' },
+];
+
+function PortQuote() {
+  const [part, setPart] = useState(0);
+  const highlight = PORT_LINES[part].highlight;
+  const box = (key) => highlight === key ? 'border-teal-300 bg-teal-500/15' : 'border-slate-800 opacity-50';
+  return (
+    <>
+      <div className="flex flex-wrap gap-2">
+        {PORT_LINES.map((line, index) => (
+          <button key={line.label} type="button" onClick={() => setPart(index)} className={`rounded-xl px-3 py-1.5 text-left text-[11px] font-bold ${part === index ? 'bg-teal-500 text-slate-950' : 'bg-slate-800 text-slate-300'}`}>{line.label}</button>
+        ))}
+      </div>
+      <div className="grid min-h-0 flex-1 gap-2 md:grid-cols-3">
+        <div className={`rounded-2xl border p-3 ${box('host')}`}>
+          <p className="text-[10px] font-bold uppercase text-amber-200">host_port 8000</p>
+          <p className="mt-2 font-mono text-sm font-bold text-white">localhost:8000</p>
+        </div>
+        <div className={`rounded-2xl border p-3 ${box('pipe')}`}>
+          <p className="text-[10px] font-bold uppercase text-cyan-200">-p 8000:80</p>
+          <p className="mt-2 font-mono text-sm font-bold text-white">8000 → 80</p>
+        </div>
+        <div className={`rounded-2xl border p-3 ${highlight === 'container' || highlight === 'zero' ? 'border-teal-300 bg-teal-500/15' : 'border-slate-800 opacity-50'}`}>
+          <p className="text-[10px] font-bold uppercase text-emerald-200">container_port 80</p>
+          <p className="mt-2 font-mono text-xs text-white">--host <span className={highlight === 'zero' ? 'rounded bg-teal-400 px-1 text-slate-950' : ''}>0.0.0.0</span> --port <span className={highlight === 'container' ? 'rounded bg-teal-400 px-1 text-slate-950' : ''}>80</span></p>
+        </div>
+      </div>
+    </>
+  );
+}
+
 export function RunOptionsVisualizer() {
-  const [hostBinding, setHostBinding] = useState('0.0.0.0');
-  const [detached, setDetached] = useState(true);
-  const [autoRemove, setAutoRemove] = useState(false);
-  const reachable = hostBinding === '0.0.0.0';
+  const [view, setView] = useState('pipe');
+  const tab = (id, label) => (
+    <button type="button" onClick={() => setView(id)} className={`rounded-xl px-3 py-1.5 text-xs font-bold ${view === id ? 'bg-teal-500 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>{label}</button>
+  );
   return (
     <Frame>
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={() => setHostBinding(reachable ? '127.0.0.1' : '0.0.0.0')} className={`rounded-xl px-3 py-1.5 font-mono text-xs font-bold ${reachable ? 'border border-emerald-500/50 bg-emerald-500/20 text-emerald-300' : 'border border-rose-500/50 bg-rose-500/20 text-rose-300'}`}>--host {hostBinding}</button>
-        <button type="button" onClick={() => setDetached((v) => !v)} className={`rounded-xl px-3 py-1.5 font-mono text-xs font-bold ${detached ? 'border border-cyan-500/50 bg-cyan-500/20 text-cyan-300' : 'bg-slate-800 text-slate-400'}`}>-d {detached ? 'on' : 'off'}</button>
-        <button type="button" onClick={() => setAutoRemove((v) => !v)} className={`rounded-xl px-3 py-1.5 font-mono text-xs font-bold ${autoRemove ? 'border border-violet-500/50 bg-violet-500/20 text-violet-300' : 'bg-slate-800 text-slate-400'}`}>--rm {autoRemove ? 'on' : 'off'}</button>
+        {tab('pipe', 'The pipe')}
+        {tab('numbers', '8000:80')}
+        {tab('bind', '0.0.0.0')}
+        {tab('quote', 'Each sentence')}
       </div>
-      <p className="truncate rounded-xl border border-slate-800 bg-slate-950 p-3 font-mono text-[11px] text-slate-300">
-        docker run {detached && <span className="text-cyan-300">-d </span>}{autoRemove && <span className="text-violet-300">--rm </span>}<span className="text-amber-300">-p 8000:80 </span><span className="text-emerald-300">--name my_api </span><span className="text-pink-300">-e MODEL_PATH=/app/models/model.pkl </span>fastapi-ml-api:latest
-      </p>
-      <div className="grid min-h-0 flex-1 items-stretch gap-3 lg:grid-cols-12">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-3 lg:col-span-4">
-          <p className="mb-2 flex items-center gap-2 text-xs font-bold text-white"><Globe className="h-4 w-4 text-amber-400" /> Host</p>
-          <p className="mb-2 rounded-xl border border-amber-500/40 bg-slate-950 p-2 font-mono text-[11px] text-amber-300">localhost:8000/docs</p>
-          <p className={`font-mono text-[11px] ${detached ? 'text-emerald-300' : 'text-amber-200'}`}>{detached ? 'Terminal is free' : 'Terminal is attached to the logs'}</p>
-        </div>
-        <div className="flex flex-col items-center justify-center lg:col-span-3">
-          <p className="mb-1 font-mono text-[10px] font-bold text-amber-300">-p 8000:80</p>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800">
-            <div className={`h-full transition-all duration-500 ${reachable ? 'w-full bg-emerald-400' : 'w-1/2 bg-rose-500'}`} />
-          </div>
-          <p className="mt-1 text-center font-mono text-[10px] text-slate-400">{reachable ? 'Host can reach port 80' : 'Stopped at the container'}</p>
-        </div>
-        <div className={`rounded-2xl border p-3 lg:col-span-5 ${reachable ? 'border-emerald-500/50 bg-emerald-950/20' : 'border-rose-500/60 bg-rose-950/30'}`}>
-          <div className="mb-2 flex items-center justify-between">
-            <span className="font-mono text-xs font-bold text-white">my_api</span>
-            <span className={`rounded px-2 py-0.5 font-mono text-[10px] font-bold ${reachable ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500 text-white'}`}>{reachable ? 'reachable' : 'refused'}</span>
-          </div>
-          <p className="rounded-xl border border-slate-800 bg-slate-950 p-2 font-mono text-[11px] text-white">
-            uvicorn main:app --host <span className={reachable ? 'font-bold text-emerald-300' : 'font-bold text-rose-300'}>{hostBinding}</span> --port <span className="font-bold text-amber-300">80</span>
-          </p>
-          <p className="mt-2 font-mono text-[10px] text-pink-200">MODEL_PATH=/app/models/model.pkl</p>
-          <p className="mt-2 text-[11px] text-slate-300">{reachable ? '0.0.0.0 accepts traffic from the Docker bridge.' : '127.0.0.1 only accepts traffic from inside the container.'}</p>
-        </div>
-      </div>
+      {view === 'pipe' && <PortPipe />}
+      {view === 'numbers' && <PortNumbers />}
+      {view === 'bind' && <BindHost />}
+      {view === 'quote' && <PortQuote />}
     </Frame>
   );
 }

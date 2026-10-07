@@ -805,3 +805,273 @@ export function HardeningChecklistVisualizer() {
     </Stage>
   );
 }
+
+const CONTEXT_FILES = [
+  { name: 'app/main.py', keep: true },
+  { name: 'requirements.txt', keep: true },
+  { name: 'models/model_v1.joblib', keep: true },
+  { name: 'venv/', keep: false },
+  { name: '.git/', keep: false },
+  { name: '__pycache__/', keep: false },
+];
+
+export function DockerignoreVisualizer() {
+  const [ignored, setIgnored] = useState(true);
+  const sent = CONTEXT_FILES.filter((file) => ignored ? file.keep : true);
+
+  return (
+    <Stage>
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-800 bg-slate-900/90 p-3">
+        <span className="text-xs font-bold uppercase tracking-wider text-slate-300">Build context</span>
+        <button type="button" onClick={() => setIgnored((value) => !value)} className={`rounded-xl px-3 py-1.5 text-xs font-bold ${ignored ? 'border border-emerald-500/50 bg-emerald-500/20 text-emerald-300' : 'border border-rose-500/50 bg-rose-500/20 text-rose-300'}`}>
+          {ignored ? '.dockerignore is on' : '.dockerignore is off'}
+        </button>
+      </div>
+      <div className="my-3 grid min-h-0 flex-1 grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="rounded-2xl border border-slate-800 p-3">
+          <p className="mb-2 text-xs font-bold text-white">Folder next to the Dockerfile</p>
+          <div className="space-y-1.5">
+            {CONTEXT_FILES.map((file) => {
+              const blocked = ignored && !file.keep;
+              return (
+                <div key={file.name} className={`flex items-center justify-between rounded-xl border px-2.5 py-2 font-mono text-[11px] ${blocked ? 'border-slate-800 text-slate-500 line-through' : 'border-slate-700 text-slate-100'}`}>
+                  <span>{file.name}</span>
+                  <span className={blocked ? 'text-rose-300 no-underline' : 'text-emerald-300'}>{blocked ? 'left behind' : 'included'}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <div className={`flex flex-col justify-between rounded-2xl border p-3 ${ignored ? 'border-emerald-500/40' : 'border-rose-500/50'}`}>
+          <div>
+            <p className="mb-2 text-xs font-bold text-white">Sent to the Docker daemon</p>
+            <div className="space-y-1.5">
+              {sent.map((file) => (
+                <p key={file.name} className={`rounded-xl border px-2.5 py-2 font-mono text-[11px] ${file.keep ? 'border-emerald-500/30 text-emerald-200' : 'border-rose-500/40 text-rose-200'}`}>{file.name}</p>
+              ))}
+            </div>
+          </div>
+          <p className="mt-3 text-[11px] text-slate-300">{ignored ? 'venv, .git, and bytecode never enter the image.' : 'The virtualenv and .git are copied in with the app.'}</p>
+        </div>
+      </div>
+    </Stage>
+  );
+}
+
+export function DownloadModelVisualizer() {
+  const [urlUp, setUrlUp] = useState(true);
+  const [built, setBuilt] = useState(false);
+  const [dropCurl, setDropCurl] = useState(true);
+  const gotModel = built && urlUp;
+
+  return (
+    <Stage>
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-800 bg-slate-900/90 p-3">
+        <button type="button" onClick={() => { setUrlUp(true); setBuilt(false); }} className={`rounded-xl px-3 py-1.5 text-xs font-bold ${urlUp ? 'border border-emerald-500/50 bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 text-slate-400'}`}>URL is reachable</button>
+        <button type="button" onClick={() => { setUrlUp(false); setBuilt(false); }} className={`rounded-xl px-3 py-1.5 text-xs font-bold ${!urlUp ? 'border border-rose-500/50 bg-rose-500/20 text-rose-300' : 'bg-slate-800 text-slate-400'}`}>URL is down</button>
+        <button type="button" onClick={() => setBuilt(true)} className="rounded-xl bg-teal-500 px-3 py-1.5 text-xs font-bold text-slate-950">Run the build</button>
+        <button type="button" onClick={() => setDropCurl((value) => !value)} className={`rounded-xl px-3 py-1.5 text-xs font-bold ${dropCurl ? 'border border-teal-400/40 bg-slate-800 text-teal-200' : 'border border-amber-400/40 bg-slate-800 text-amber-200'}`}>
+          {dropCurl ? 'Second stage drops curl' : 'curl stays in the image'}
+        </button>
+      </div>
+      <div className="my-3 grid min-h-0 flex-1 grid-cols-1 items-stretch gap-3 md:grid-cols-3">
+        <div className="rounded-2xl border border-slate-800 p-3">
+          <p className="text-[10px] font-bold uppercase text-slate-400">Git repository</p>
+          <p className="mt-3 font-mono text-xs text-slate-200">app/main.py</p>
+          <p className="font-mono text-xs text-slate-200">requirements.txt</p>
+          <p className="mt-3 font-mono text-[11px] text-slate-500">no model_v1.joblib</p>
+        </div>
+        <div className={`rounded-2xl border p-3 ${!built ? 'border-slate-700' : urlUp ? 'border-teal-400/50' : 'border-rose-500/50'}`}>
+          <p className="text-[10px] font-bold uppercase text-slate-400">During docker build</p>
+          <p className="mt-3 font-mono text-[11px] text-teal-100">RUN curl -o /app/models/model_v1.joblib $MODEL_URL</p>
+          <p className="mt-3 text-xs text-slate-300">{!built ? 'Press Run the build.' : urlUp ? 'The file landed in the image.' : 'The build stopped. The URL did not answer.'}</p>
+        </div>
+        <div className={`rounded-2xl border p-3 ${gotModel ? 'border-emerald-400/50' : 'border-slate-800'}`}>
+          <p className="text-[10px] font-bold uppercase text-slate-400">Image contents</p>
+          <p className="mt-3 font-mono text-xs text-slate-200">app/main.py</p>
+          <p className={`font-mono text-xs ${gotModel ? 'text-emerald-200' : 'text-slate-600'}`}>{gotModel ? 'models/model_v1.joblib' : 'models/ empty'}</p>
+          <p className={`mt-3 font-mono text-[11px] ${dropCurl && gotModel ? 'text-slate-500' : gotModel ? 'text-amber-200' : 'text-slate-600'}`}>
+            {gotModel ? (dropCurl ? 'curl was used, then left out' : 'curl is still installed') : 'nothing downloaded'}
+          </p>
+        </div>
+      </div>
+    </Stage>
+  );
+}
+
+export function VolumeModelVisualizer() {
+  const [copied, setCopied] = useState(false);
+  const [mounted, setMounted] = useState(true);
+  const loaded = copied || mounted;
+
+  return (
+    <Stage>
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-800 bg-slate-900/90 p-3">
+        <button type="button" onClick={() => setCopied(true)} className={`rounded-xl px-3 py-1.5 text-xs font-bold ${copied ? 'border border-emerald-500/50 bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 text-slate-400'}`}>Model copied into the image</button>
+        <button type="button" onClick={() => setCopied(false)} className={`rounded-xl px-3 py-1.5 text-xs font-bold ${!copied ? 'border border-amber-400/50 bg-amber-500/15 text-amber-200' : 'bg-slate-800 text-slate-400'}`}>Model stays on the host</button>
+        {!copied && (
+          <button type="button" onClick={() => setMounted((value) => !value)} className={`rounded-xl px-3 py-1.5 text-xs font-bold ${mounted ? 'bg-teal-500 text-slate-950' : 'border border-rose-500/40 bg-rose-500/15 text-rose-200'}`}>
+            {mounted ? 'Volume is mounted' : 'Mount ./models'}
+          </button>
+        )}
+      </div>
+      <div className="my-3 grid min-h-0 flex-1 grid-cols-1 items-stretch gap-3 md:grid-cols-3">
+        <div className="rounded-2xl border border-slate-800 p-3">
+          <p className="text-[10px] font-bold uppercase text-slate-400">Image</p>
+          <p className="mt-3 font-mono text-xs text-slate-200">app/main.py</p>
+          <p className={`mt-2 font-mono text-xs ${copied ? 'text-emerald-200' : 'text-slate-600'}`}>{copied ? '/app/models/model_v1.joblib' : 'no model file'}</p>
+        </div>
+        <div className={`rounded-2xl border p-3 ${loaded ? 'border-emerald-400/40' : 'border-rose-500/50'}`}>
+          <p className="text-[10px] font-bold uppercase text-slate-400">Running container</p>
+          <p className={`mt-3 text-sm font-bold ${loaded ? 'text-emerald-200' : 'text-rose-200'}`}>{loaded ? 'Model loaded' : 'File not found'}</p>
+          <p className="mt-2 text-[11px] text-slate-300">
+            {copied ? 'The file is inside the image, so the container starts on its own.' : mounted ? 'The file is coming from the host folder, not from the image.' : 'Nothing is mounted, and the image has no model.'}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-slate-800 p-3">
+          <p className="text-[10px] font-bold uppercase text-slate-400">Host folder ./models</p>
+          <p className="mt-3 font-mono text-xs text-amber-200">model_v1.joblib</p>
+          <p className="mt-2 text-[11px] text-slate-400">{copied ? 'The container does not need this folder.' : mounted ? 'Mounted at /app/models.' : 'Sitting on the laptop, unseen by the container.'}</p>
+        </div>
+      </div>
+    </Stage>
+  );
+}
+
+function PracticeButton({ active, onClick, children, tone = 'teal' }) {
+  const on = tone === 'amber'
+    ? 'border-amber-400/50 bg-amber-500/15 text-amber-100'
+    : tone === 'rose'
+      ? 'border-rose-400/50 bg-rose-500/15 text-rose-100'
+      : 'border-teal-300/50 bg-teal-500/20 text-teal-100';
+  return (
+    <button type="button" onClick={onClick} className={`rounded-xl border px-3 py-1.5 text-xs font-bold ${active ? on : 'border-transparent bg-slate-800 text-slate-400'}`}>
+      {children}
+    </button>
+  );
+}
+
+function VersionPractice() {
+  const [named, setNamed] = useState(false);
+  const [viaArg, setViaArg] = useState(false);
+  const file = named ? 'model_v1.2.joblib' : 'model_v1.joblib';
+  return (
+    <div className="grid min-h-0 flex-1 gap-3 md:grid-cols-2">
+      <div className="flex flex-col justify-between rounded-2xl border border-slate-800 p-3">
+        <div>
+          <p className="text-[10px] font-bold uppercase text-slate-400">Direct copy</p>
+          <p className="mt-3 font-mono text-[11px] text-teal-100">COPY ./models/{file} /app/models/{file}</p>
+          <p className="mt-3 rounded-xl border border-slate-700 px-2 py-2 font-mono text-xs text-white">{file}</p>
+        </div>
+        <button type="button" onClick={() => setNamed((value) => !value)} className="mt-3 rounded-xl bg-teal-500 px-3 py-1.5 text-xs font-bold text-slate-950">
+          {named ? 'Back to v1' : 'Replace the file with v1.2'}
+        </button>
+      </div>
+      <div className="flex flex-col justify-between rounded-2xl border border-slate-800 p-3">
+        <div>
+          <p className="text-[10px] font-bold uppercase text-slate-400">Download with ARG</p>
+          <p className="mt-3 font-mono text-[11px] text-slate-300">ARG MODEL_VERSION</p>
+          <p className="font-mono text-[11px] text-slate-300">RUN curl -o /app/models/model.joblib $MODEL_URL</p>
+          <p className="mt-3 font-mono text-[11px] text-amber-100">docker build --build-arg MODEL_VERSION={viaArg ? 'v1.3' : 'v1.2'}</p>
+        </div>
+        <button type="button" onClick={() => setViaArg((value) => !value)} className="mt-3 rounded-xl border border-amber-400/40 px-3 py-1.5 text-xs font-bold text-amber-100">
+          {viaArg ? 'CI passes v1.3' : 'CI passes v1.2'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PathPractice() {
+  const [match, setMatch] = useState(true);
+  const appPath = match ? '/app/models/model_v1.2.joblib' : '/models/model.joblib';
+  return (
+    <div className="grid min-h-0 flex-1 gap-3 md:grid-cols-2">
+      <div className="rounded-2xl border border-slate-800 p-3">
+        <p className="text-[10px] font-bold uppercase text-slate-400">Dockerfile saves the file here</p>
+        <p className="mt-3 font-mono text-xs text-teal-100">/app/models/model_v1.2.joblib</p>
+      </div>
+      <div className={`rounded-2xl border p-3 ${match ? 'border-emerald-400/40' : 'border-rose-400/50'}`}>
+        <p className="text-[10px] font-bold uppercase text-slate-400">FastAPI loads MODEL_PATH</p>
+        <p className="mt-3 font-mono text-xs text-white">{appPath}</p>
+        <p className={`mt-3 text-sm font-bold ${match ? 'text-emerald-200' : 'text-rose-200'}`}>{match ? 'Model loaded' : 'File not found'}</p>
+        <button type="button" onClick={() => setMatch((value) => !value)} className="mt-3 rounded-xl bg-slate-800 px-3 py-1.5 text-xs font-bold text-white">
+          {match ? 'Point the app at a different path' : 'Point the app at /app/models/'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SizePractice() {
+  const [slim, setSlim] = useState(true);
+  const rows = slim
+    ? [
+      ['python:3.10-slim', 'kept'],
+      ['app + model_v1.2.joblib', 'kept'],
+      ['curl and apt lists', 'discarded'],
+      ['pip cache', 'discarded'],
+    ]
+    : [
+      ['python + curl + apt', 'shipped'],
+      ['app + model_v1.2.joblib', 'shipped'],
+      ['/var/lib/apt/lists', 'shipped'],
+      ['/root/.cache/pip', 'shipped'],
+    ];
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-3">
+      <div className="flex flex-wrap gap-2">
+        <PracticeButton active={!slim} tone="rose" onClick={() => setSlim(false)}>One stage keeps the tools</PracticeButton>
+        <PracticeButton active={slim} onClick={() => setSlim(true)}>Final stage copies the model only</PracticeButton>
+      </div>
+      <div className="space-y-1.5">
+        {rows.map(([label, state]) => {
+          const extra = state === 'shipped' && label !== 'app + model_v1.2.joblib';
+          return (
+            <div key={label} className={`flex items-center justify-between rounded-xl border px-3 py-2 font-mono text-[11px] ${state === 'discarded' ? 'border-slate-800 text-slate-500 line-through' : extra ? 'border-rose-400/40 text-rose-200' : 'border-emerald-400/30 text-emerald-100'}`}>
+              <span>{label}</span>
+              <span className="no-underline">{state}</span>
+            </div>
+          );
+        })}
+      </div>
+      <p className="text-[11px] text-slate-400">{slim ? 'Stage 1 downloads with curl. Stage 2 is the slim image plus the app and the model.' : 'curl, apt lists, and the pip cache stay in the image you ship.'}</p>
+    </div>
+  );
+}
+
+function SecretPractice() {
+  const [secret, setSecret] = useState(true);
+  return (
+    <div className="grid min-h-0 flex-1 gap-3 md:grid-cols-2">
+      <button type="button" onClick={() => setSecret(false)} className={`rounded-2xl border p-3 text-left ${secret ? 'border-slate-800' : 'border-rose-400/50'}`}>
+        <p className="text-[10px] font-bold uppercase text-slate-400">ARG token</p>
+        <p className="mt-3 font-mono text-[11px] text-rose-200">ARG AWS_TOKEN</p>
+        <p className="mt-2 font-mono text-[11px] text-rose-100">layer history: AWS_TOKEN=AKIA…</p>
+      </button>
+      <button type="button" onClick={() => setSecret(true)} className={`rounded-2xl border p-3 text-left ${secret ? 'border-emerald-400/50' : 'border-slate-800'}`}>
+        <p className="text-[10px] font-bold uppercase text-slate-400">docker build --secret</p>
+        <p className="mt-3 font-mono text-[11px] text-emerald-100">RUN --mount=type=secret,id=token curl …</p>
+        <p className="mt-2 font-mono text-[11px] text-slate-300">layer history: the token value is absent</p>
+      </button>
+    </div>
+  );
+}
+
+export function BestPracticesVisualizer() {
+  const [topic, setTopic] = useState('version');
+  return (
+    <Stage>
+      <div className="flex flex-wrap gap-2 rounded-2xl border border-slate-800 bg-slate-900/90 p-2.5">
+        <PracticeButton active={topic === 'version'} onClick={() => setTopic('version')}>Version name</PracticeButton>
+        <PracticeButton active={topic === 'path'} onClick={() => setTopic('path')}>Same path</PracticeButton>
+        <PracticeButton active={topic === 'size'} onClick={() => setTopic('size')}>Image size</PracticeButton>
+        <PracticeButton active={topic === 'secret'} tone="amber" onClick={() => setTopic('secret')}>Download token</PracticeButton>
+      </div>
+      {topic === 'version' && <VersionPractice />}
+      {topic === 'path' && <PathPractice />}
+      {topic === 'size' && <SizePractice />}
+      {topic === 'secret' && <SecretPractice />}
+    </Stage>
+  );
+}

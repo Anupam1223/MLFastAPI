@@ -162,7 +162,7 @@ const slidesData = [
             to avoid cluttering your system with stopped containers.
           </li>
         </ul>
-        <Hint>Six steps, one flag at a time. Step 6 removes the container when it exits.</Hint>
+        <Hint>Four pictures for -p. The pipe is missing until you turn it on. 8000:80 only works when the right number matches uvicorn --port. 0.0.0.0 opens the container door.</Hint>
       </div>
     ),
   },

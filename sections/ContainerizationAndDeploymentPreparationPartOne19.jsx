@@ -10,8 +10,10 @@ import {
   UnionFSVisualizer,
   DockerfileConveyorVisualizer,
   LayerCacheVisualizer,
-  MultiStageVisualizer,
-  HardeningChecklistVisualizer,
+  BestPracticesVisualizer,
+  DockerignoreVisualizer,
+  DownloadModelVisualizer,
+  VolumeModelVisualizer,
 } from '../components/DockerPrepVisualizers';
 
 export const meta = {
@@ -367,7 +369,7 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]`}</Pre>
     id: 'ignore',
     title: 'The .dockerignore File',
     subtitle: 'venv, bytecode, and .git stay out of the build context',
-    Visual: HardeningChecklistVisualizer,
+    Visual: DockerignoreVisualizer,
     content: (
       <div className="space-y-3 text-sm leading-relaxed text-gray-300">
         <p>
@@ -390,7 +392,7 @@ venv/
           By defining this <C>Dockerfile</C>, you provide a clear, repeatable set of instructions for packaging your FastAPI ML
           application. The next step is to use this file to build the Docker image and run it as a container.
         </p>
-        <Hint>The .dockerignore card is one of the four gates. Click a card to open or close it.</Hint>
+        <Hint>Turn .dockerignore on and off. venv, .git, and __pycache__ stay in the folder when it is on.</Hint>
       </div>
     ),
   },
@@ -479,7 +481,7 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]`}</Pre>
     id: 'download-model',
     title: 'Strategy 2: Downloading Models During the Build',
     subtitle: 'The repository stays small. The build needs the URL to be reachable',
-    Visual: MultiStageVisualizer,
+    Visual: DownloadModelVisualizer,
     content: (
       <div className="space-y-3 text-sm leading-relaxed text-gray-300">
         <p className="font-semibold text-white">Strategy 2: Downloading Models During the Build</p>
@@ -548,7 +550,7 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]`}</Pre>
             unless you use multi-stage builds to discard these tools later.
           </li>
         </ul>
-        <Hint>Switch between the single-stage image and the multi-stage image. The download tools stay in the builder. The shipped image keeps the result.</Hint>
+        <Hint>The repository has no model file. Run the build while the URL is up, then while it is down. The last button leaves curl in the image or drops it after the download.</Hint>
       </div>
     ),
   },
@@ -556,7 +558,7 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]`}</Pre>
     id: 'volume',
     title: 'Strategy 3: Mounting Models via Volumes',
     subtitle: 'Useful on your laptop. The production image should still contain the model',
-    Visual: UnionFSVisualizer,
+    Visual: VolumeModelVisualizer,
     content: (
       <div className="space-y-3 text-sm leading-relaxed text-gray-300">
         <p className="font-semibold text-white">Strategy 3: Mounting Models via Volumes (Use with Caution for Deployment)</p>
@@ -571,7 +573,7 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]`}</Pre>
           reproducibility. If the volume isn’t mounted correctly, the application will fail. This approach is better suited for
           injecting configuration or perhaps runtime data, not core application artifacts like the model itself.
         </p>
-        <Hint>Edit config.json, then look at the lower layer. The template underneath is unchanged. A production model belongs in that template, not only in a mount added later.</Hint>
+        <Hint>Copy the model into the image, then switch so it stays on the host. Remove the mount and the container cannot find the file.</Hint>
       </div>
     ),
   },
@@ -579,7 +581,7 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]`}</Pre>
     id: 'practices',
     title: 'Best Practices',
     subtitle: 'Name the version, match the path, drop the download tools, keep the token out',
-    Visual: HardeningChecklistVisualizer,
+    Visual: BestPracticesVisualizer,
     content: (
       <div className="space-y-3 text-sm leading-relaxed text-gray-300">
         <p className="font-semibold text-white">Best Practices</p>
@@ -627,7 +629,7 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]`}</Pre>
           For many applications, copying the model directly offers simplicity, while downloading during the build provides better
           decoupling for more complex or frequently updated models managed in separate storage.
         </p>
-        <Hint>Click the four gates. .dockerignore, a non-root user, a health probe, and a clean shutdown are the checks before the image is shipped.</Hint>
+        <Hint>Four pictures: the version in the filename or the build argument, the path the app loads, what the final stage keeps, and whether the token remains in a layer.</Hint>
       </div>
     ),
   },
